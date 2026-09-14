@@ -1,0 +1,141 @@
+/* === Reset y base === */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e0f2f1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* === Contenedor principal === */
+.contenedor {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 40px;
+    width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 128, 128, 0.15);
+    border-top: 4px solid #4db6ac;
+}
+
+/* === Encabezado === */
+.icono-pg {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.titulo {
+    text-align: center;
+    margin-bottom: 8px;
+    color: #00796b;
+    font-size: 1.5rem;
+}
+
+.subtitulo {
+    text-align: center;
+    margin-bottom: 28px;
+    color: #80cbc4;
+    font-size: 0.9rem;
+}
+
+/* === Campos del formulario === */
+.campo {
+    margin-bottom: 16px;
+}
+
+.campo label {
+    display: block;
+    margin-bottom: 6px;
+    color: #00695c;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.campo input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #b2dfdb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #004d40;
+    background: #f1f9f8;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    outline: none;
+}
+
+.campo input:focus {
+    border-color: #4db6ac;
+    box-shadow: 0 0 0 3px rgba(77, 182, 172, 0.2);
+}
+
+.campo input::placeholder {
+    color: #80cbc4;
+}
+
+.fila-doble {
+    display: flex;
+    gap: 12px;
+}
+
+.fila-doble .campo {
+    flex: 1;
+}
+
+/* === Botón === */
+.btn-conectar {
+    width: 100%;
+    padding: 12px;
+    background: #4db6ac;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.3s, transform 0.1s;
+}
+
+.btn-conectar:hover {
+    background: #00897b;
+}
+
+.btn-conectar:active {
+    transform: scale(0.98);
+}
+
+.btn-conectar:disabled {
+    background: #b2dfdb;
+    cursor: not-allowed;
+}
+
+/* === Resultado === */
+.resultado {
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    display: none;
+    word-break: break-word;
+}
+
+.resultado.exito {
+    display: block;
+    background: #e0f2f1;
+    border: 1px solid #4db6ac;
+    color: #00695c;
+}
+
+.resultado.error {
+    display: block;
+    background: #fce4ec;
+    border: 1px solid #ef9a9a;
+    color: #c62828;
+}

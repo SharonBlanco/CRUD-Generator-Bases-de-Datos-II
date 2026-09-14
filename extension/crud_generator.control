@@ -1,0 +1,4 @@
+comment = 'Generador automático de procedimientos CRUD'
+default_version = '1.1'
+relocatable = false
+schema = public
