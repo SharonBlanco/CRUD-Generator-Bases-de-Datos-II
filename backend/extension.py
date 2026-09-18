@@ -45,13 +45,27 @@ def instalar_extension():
 
 
 def actualizar_extension():
-    """Aplica el parche de versión más reciente (ALTER EXTENSION ... UPDATE)."""
+    """
+    Copia los archivos nuevos y aplica el parche (ALTER EXTENSION ... UPDATE).
+
+    La copia se hace con "COPY ... TO PROGRAM", que ejecuta el comando
+    dentro del propio servidor de Postgres (adentro del contenedor), usando
+    la misma conexión SQL que ya está abierta. Así no depende de que la
+    máquina donde corre el backend tenga el comando "docker" disponible.
+    """
     conexion = obtener_conexion()
     if conexion is None:
         return {'exito': False, 'mensaje': 'No hay una conexión activa a la base de datos.'}
 
     try:
         cursor = conexion.cursor()
+
+        comando_copia = (
+            f'cp /extension-custom/{NOMBRE_EXTENSION}* '
+            '/usr/share/postgresql/16/extension/'
+        )
+        cursor.execute(f"COPY (SELECT 1) TO PROGRAM '{comando_copia}';")
+
         cursor.execute(f'ALTER EXTENSION {NOMBRE_EXTENSION} UPDATE;')
         conexion.commit()
 

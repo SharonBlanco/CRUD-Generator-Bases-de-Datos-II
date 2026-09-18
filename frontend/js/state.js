@@ -4,7 +4,9 @@
  */
 const estado = {
     conectado: false,
-    datosConexion: null
+    datosConexion: null,
+    esquema: null,
+    tabla: null
 };
 
 export function setConexion(datos) {
@@ -15,6 +17,17 @@ export function setConexion(datos) {
 export function limpiarConexion() {
     estado.conectado = false;
     estado.datosConexion = null;
+    estado.esquema = null;
+    estado.tabla = null;
+}
+
+export function setEsquema(esquema) {
+    estado.esquema = esquema;
+    estado.tabla = null;
+}
+
+export function setTabla(tabla) {
+    estado.tabla = tabla;
 }
 
 export function obtenerEstado() {

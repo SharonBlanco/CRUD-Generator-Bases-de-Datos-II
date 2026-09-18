@@ -1,0 +1,39 @@
+-- Database: crud_test
+
+-- DROP DATABASE IF EXISTS crud_test;
+
+CREATE DATABASE crud_test
+    WITH
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'en_US.utf8'
+    LC_CTYPE = 'en_US.utf8'
+    LOCALE_PROVIDER = 'libc'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1
+    IS_TEMPLATE = False;
+
+
+CREATE TABLE Pacientes (
+    id_paciente SERIAL PRIMARY KEY,
+    cedula VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    fecha_nacimiento DATE
+);
+
+CREATE TABLE Citas (
+    id_cita SERIAL PRIMARY KEY,
+    id_paciente INT REFERENCES Pacientes(id_paciente),
+    fecha_cita TIMESTAMP NOT NULL,
+    motivo TEXT
+);
+
+CREATE TABLE Consultas (
+    id_consulta SERIAL PRIMARY KEY,
+    id_cita INT REFERENCES Citas(id_cita),
+    diagnostico TEXT,
+    fecha_consulta TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO Pacientes (cedula, nombre, fecha_nacimiento)
+VALUES ('123456789', 'María López', '1990-05-15'),
+       ('987654321', 'Carlos Rojas', '1985-11-20');

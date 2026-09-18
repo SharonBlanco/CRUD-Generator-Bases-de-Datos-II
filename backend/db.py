@@ -46,10 +46,22 @@ def conectar(servidor, puerto, base_datos, usuario, contrasena):
 
 
 def obtener_conexion():
-    """Retorna la conexión activa o None."""
-    if _conexion and not _conexion.closed:
+    """Retorna la conexión activa (verificando que siga viva) o None."""
+    global _conexion
+
+    if _conexion is None or _conexion.closed:
+        return None
+
+    try:
+        cursor = _conexion.cursor()
+        cursor.execute('SELECT 1;')
+        cursor.close()
         return _conexion
-    return None
+    except Exception:
+        # La conexión se veía abierta pero el servidor ya no responde
+        # (ej. se reinició el contenedor de Postgres).
+        _conexion = None
+        return None
 
 
 def esta_conectado():

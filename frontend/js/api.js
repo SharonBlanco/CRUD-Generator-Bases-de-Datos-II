@@ -44,3 +44,71 @@ export async function apiActualizarExtension() {
     const respuesta = await fetch(`${API_URL}/extension/actualizar`, { method: 'POST' });
     return await respuesta.json();
 }
+
+/**
+ * Lista los esquemas disponibles en la BD conectada.
+ */
+export async function apiListarEsquemas() {
+    const respuesta = await fetch(`${API_URL}/esquemas`);
+    return await respuesta.json();
+}
+
+/**
+ * Lista las tablas de un esquema.
+ */
+export async function apiListarTablas(esquema) {
+    const respuesta = await fetch(`${API_URL}/esquemas/${encodeURIComponent(esquema)}/tablas`);
+    return await respuesta.json();
+}
+
+/**
+ * Analiza la estructura de una tabla (columnas, tipos, llave primaria).
+ */
+export async function apiAnalizarTabla(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/esquemas/${encodeURIComponent(esquema)}/tablas/${encodeURIComponent(tabla)}`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Operaciones CRUD que la extensión sabe generar.
+ */
+export async function apiListarOperaciones() {
+    const respuesta = await fetch(`${API_URL}/generador/operaciones`);
+    return await respuesta.json();
+}
+
+/**
+ * Vista previa del código generado, sin ejecutarlo.
+ */
+export async function apiGenerarCodigo(esquema, tabla, operacion) {
+    const respuesta = await fetch(`${API_URL}/generador/codigo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ esquema, tabla, operacion })
+    });
+    return await respuesta.json();
+}
+
+/**
+ * Crea el procedimiento generado en la base de datos.
+ */
+export async function apiCrearProcedimiento(esquema, tabla, operacion) {
+    const respuesta = await fetch(`${API_URL}/generador/crear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ esquema, tabla, operacion })
+    });
+    return await respuesta.json();
+}
+
+/**
+ * Lista los procedimientos ya generados para una tabla.
+ */
+export async function apiListarProcedimientos(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/generador/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}/procedimientos`
+    );
+    return await respuesta.json();
+}

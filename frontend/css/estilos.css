@@ -20,8 +20,14 @@ body {
     border-radius: 16px;
     padding: 40px;
     width: 420px;
+    max-width: calc(100vw - 32px);
     box-shadow: 0 8px 32px rgba(0, 128, 128, 0.15);
     border-top: 4px solid #4db6ac;
+}
+
+/* Para pantallas con tablas, que necesitan más ancho */
+.contenedor-ancho {
+    width: 680px;
 }
 
 /* === Encabezado === */
@@ -138,4 +144,176 @@ body {
     background: #fce4ec;
     border: 1px solid #ef9a9a;
     color: #c62828;
+}
+
+/* === Botones secundarios === */
+.btn-enlace {
+    padding: 6px 0;
+    background: none;
+    border: none;
+    color: #00796b;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.btn-enlace:hover {
+    color: #004d40;
+}
+
+.btn-recargar {
+    padding: 6px 12px;
+    border: 1px solid #4db6ac;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #00796b;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.btn-recargar:hover {
+    background: #e0f2f1;
+}
+
+.btn-recargar:disabled {
+    border-color: #b2dfdb;
+    color: #80cbc4;
+    cursor: not-allowed;
+}
+
+/* Fila de encabezado: título de sección + acción a la derecha */
+.fila-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.pie-navegacion {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid #b2dfdb;
+}
+
+/* === Listas (esquemas, tablas) === */
+.lista {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lista-item {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid #b2dfdb;
+    border-radius: 8px;
+    background: #f1f9f8;
+    color: #00695c;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.lista-item:hover {
+    border-color: #4db6ac;
+    background: #e0f2f1;
+}
+
+.lista-item.activo {
+    border-color: #00897b;
+    background: #b2dfdb;
+    font-weight: 600;
+}
+
+/* === Tabla de columnas === */
+.scroll-horizontal {
+    overflow-x: auto;
+}
+
+.tabla-columnas {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 0.85rem;
+}
+
+.tabla-columnas th,
+.tabla-columnas td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #b2dfdb;
+    color: #004d40;
+    vertical-align: top;
+}
+
+.tabla-columnas th {
+    color: #00695c;
+    white-space: nowrap;
+}
+
+.celda-nombre {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.celda-tipo {
+    color: #00796b;
+    white-space: nowrap;
+}
+
+/* === Insignias de atributos === */
+.insignia {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 1px 2px 1px 0;
+    border-radius: 999px;
+    background: #e0f2f1;
+    border: 1px solid #b2dfdb;
+    color: #00695c;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.insignia-pk {
+    background: #fff8e1;
+    border-color: #ffe082;
+    color: #8d6e00;
+}
+
+.insignia-requerida {
+    background: #fce4ec;
+    border-color: #f8bbd0;
+    color: #ad1457;
+}
+
+.vacio {
+    margin-top: 12px;
+    color: #80cbc4;
+    font-size: 0.9rem;
+}
+
+/* === Bloque de código SQL generado === */
+.codigo {
+    margin-top: 12px;
+    padding: 14px;
+    max-height: 340px;
+    overflow: auto;
+    background: #05313a;
+    color: #b2dfdb;
+    border-radius: 8px;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre;
+    tab-size: 4;
+}
+
+.tabla-columnas code {
+    font-size: 0.78rem;
+    color: #00695c;
+    word-break: break-word;
 }

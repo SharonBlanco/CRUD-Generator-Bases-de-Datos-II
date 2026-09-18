@@ -1,8 +1,11 @@
 import { apiVerificarExtension, apiInstalarExtension, apiActualizarExtension } from '../api.js';
 import { crearResultado } from '../components/resultado.js';
+import { navegar } from '../router.js';
 
 const html = `
 <div class="contenedor">
+    <button class="btn-enlace" id="btnCambiarConexion">← Cambiar conexión</button>
+
     <h1 class="titulo">Extensión crud_generator</h1>
     <p class="subtitulo">Verificación de la extensión en la base de datos</p>
 
@@ -95,7 +98,11 @@ function montar(contenedor) {
     });
 
     btnContinuar.addEventListener('click', () => {
-        // Cuando exista la vista de tablas: navegar('tablas');
+        navegar('esquemas');
+    });
+
+    contenedor.querySelector('#btnCambiarConexion').addEventListener('click', () => {
+        navegar('conexion');
     });
 
     verificar();
