@@ -53,6 +53,8 @@ const html = `
         <div id="prueba"></div>
     </div>
 
+    <button class="btn-conectar" id="btnEjecutar" style="margin-top: 20px">Probar procedimientos con datos reales →</button>
+
     <div class="pie-navegacion">
         <button class="btn-enlace" id="btnVolver">← Volver a generar procedimientos</button>
     </div>
@@ -364,6 +366,10 @@ function montar(contenedor) {
 
     contenedor.querySelector('#btnVolver').addEventListener('click', () => {
         navegar('generador');
+    });
+
+    contenedor.querySelector('#btnEjecutar').addEventListener('click', () => {
+        navegar('ejecutar');
     });
 
     cargar();

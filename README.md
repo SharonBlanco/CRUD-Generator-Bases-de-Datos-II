@@ -88,7 +88,8 @@ python3 backend/app.py
 Conexión → Extensión → Esquema → **Tablas** (una, varias o todas) → Estructura
 (análisis hecho por la extensión) → **Generar** (varias operaciones a la vez;
 cada procedimiento en su propia transacción, así un error no frena a los demás)
-→ **Privilegios** (la misma matriz para todas las tablas seleccionadas) → Probar.
+→ **Privilegios** (la misma matriz para todas las tablas seleccionadas) → **Probar
+procedimientos** (ejecutarlos con datos reales, como cualquier rol).
 
 > El servidor Flask corre con `threaded=False` porque usa una sola conexión a
 > PostgreSQL: atiende las peticiones una por una para que sus transacciones no
@@ -113,6 +114,20 @@ Pantalla **Generar procedimientos → Asignar privilegios**.
 
 > Si se vuelve a generar un procedimiento (DROP + CREATE), PostgreSQL le
 > devuelve el permiso a `PUBLIC`: hay que volver a aplicar los privilegios.
+
+## Probar procedimientos
+
+Pantalla **Privilegios → Probar procedimientos con datos reales**.
+
+- Elegís tabla, operación y **con qué rol** ejecutar (o el usuario conectado).
+- El formulario se arma solo con los parámetros del procedimiento (leídos de
+  `pg_proc`). Vacío en un parámetro opcional = no se envía: en `consultar` no
+  filtra, en `actualizar` no cambia esa columna, en `insertar` usa el DEFAULT.
+- Se ejecuta de verdad (con `COMMIT`) y muestra la sentencia, las filas
+  devueltas (en `consultar`) y el estado de la tabla después.
+- Si el rol no tiene permiso, muestra el "permission denied" de PostgreSQL.
+- Los valores viajan como parámetros de psycopg2 y los nombres con
+  `sql.Identifier`: nunca se concatena lo que escribe el usuario.
 
 ### Datos de prueba
 

@@ -12,6 +12,7 @@ from generador import (
     listar_procedimientos,
     crear_lote,
 )
+from ejecutor import describir, ejecutar
 from privilegios import obtener_matriz, aplicar_matriz, probar_matriz
 
 # El backend sirve también el frontend, para levantar todo con un solo
@@ -176,6 +177,29 @@ def ruta_probar_privilegios(esquema, tabla):
     resultado = probar_matriz(esquema, tabla)
     status = 200 if resultado['exito'] else 500
     return jsonify(resultado), status
+
+
+@app.route('/api/ejecutor/<esquema>/<tabla>', methods=['GET'])
+def ruta_describir_procedimientos(esquema, tabla):
+    resultado = describir(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/ejecutor/<esquema>/<tabla>', methods=['POST'])
+def ruta_ejecutar_procedimiento(esquema, tabla):
+    datos = request.get_json() or {}
+    resultado = ejecutar(
+        esquema,
+        tabla,
+        datos.get('operacion'),
+        datos.get('rol') or None,
+        datos.get('valores')
+    )
+    # Un error de PostgreSQL al ejecutar (permiso denegado, clave que no
+    # existe...) es un resultado esperado de la prueba, no una falla del
+    # servidor: se responde 200 con exito=false.
+    return jsonify(resultado), 200
 
 
 if __name__ == '__main__':

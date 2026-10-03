@@ -470,3 +470,40 @@ body {
     color: #00695c;
     background: #ffffff;
 }
+
+/* === Pantalla de ejecución de procedimientos === */
+.fila-campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.fila-campos .campo,
+.formulario-parametros .campo {
+    margin-bottom: 0;
+}
+
+.fila-campos .selector {
+    width: 100%;
+    padding: 10px;
+}
+
+.formulario-parametros {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px 16px;
+    margin-top: 12px;
+    align-items: end;
+}
+
+.formulario-parametros label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.nota code {
+    font-size: 0.8rem;
+}

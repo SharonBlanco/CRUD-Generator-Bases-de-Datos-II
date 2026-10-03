@@ -172,3 +172,28 @@ export async function apiAplicarPrivilegiosLote(esquema, tablas, matriz) {
     });
     return await respuesta.json();
 }
+
+/**
+ * Roles y procedimientos (con sus parámetros) de una tabla, para la pantalla de ejecución.
+ */
+export async function apiDescribirProcedimientos(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/ejecutor/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Ejecuta un procedimiento generado, opcionalmente como otro rol.
+ */
+export async function apiEjecutarProcedimiento(esquema, tabla, operacion, rol, valores) {
+    const respuesta = await fetch(
+        `${API_URL}/ejecutor/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operacion, rol, valores })
+        }
+    );
+    return await respuesta.json();
+}
