@@ -11,7 +11,7 @@ Proyecto/
 │   ├── db.py                 # Conexión a PostgreSQL
 │   ├── extension.py          # Verificar / instalar / actualizar la extensión
 │   ├── esquemas.py           # Listar esquemas, tablas y columnas
-│   ├── generador.py          # Generar procedimientos CRUD (pendiente)
+│   ├── generador.py          # Puente hacia la extensión (generar/crear procedimientos)
 │   └── privilegios.py        # Matriz rol x operación: GRANT/REVOKE y prueba real
 ├── frontend/                 # Interfaz web (SPA sin framework)
 │   ├── index.html            # Shell: solo <div id="app">
@@ -109,3 +109,29 @@ Get-Content pruebas\02_roles_prueba.sql  | docker exec -i crud_generator_db psql
 Crea el esquema `tienda` (PK simple, PK compuesta, columnas autogeneradas,
 tabla sin PK y nombres reservados) y los roles `vendedor`, `supervisor` y
 `administrador` (contraseña = nombre), sin permisos sobre las tablas.
+
+## Versiones de la extensión
+
+| Versión | Contenido |
+|---|---|
+| 1.0 | Base vacía |
+| 1.1 | Análisis de tablas desde el catálogo, `insertar` y `consultar` |
+| 1.2 | `actualizar` y `eliminar` por clave primaria (simple o compuesta; error si la tabla no tiene PK), procedimientos `SECURITY DEFINER` con `search_path` fijo y sin permiso para `PUBLIC`, columnas con `DEFAULT` opcionales en `insertar`, y borrado de versiones previas al regenerar |
+
+Procedimientos que genera la 1.2 para una tabla `t`:
+
+| Procedimiento | Parámetros |
+|---|---|
+| `t_insertar` | Columnas no autogeneradas. Las que tienen `DEFAULT` son opcionales (NULL = usar el default) |
+| `t_consultar` (función) | Todas las columnas, opcionales: cada una es un filtro (NULL = no filtra) |
+| `t_actualizar` | Columnas de la PK (obligatorias) + resto de columnas opcionales (NULL = no cambiar) |
+| `t_eliminar` | Columnas de la PK |
+
+Ejemplos:
+
+```sql
+CALL tienda.producto_insertar('Parlante', 12500);
+SELECT * FROM tienda.producto_consultar(p_nombre => 'Parlante');
+CALL tienda.producto_actualizar(1, p_precio => 14000);
+CALL tienda.detalle_factura_eliminar(2, 1::smallint);   -- PK compuesta
+```

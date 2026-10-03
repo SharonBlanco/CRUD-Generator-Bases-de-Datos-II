@@ -319,6 +319,10 @@ body {
 }
 
 /* === Pantalla de privilegios === */
+.contenedor-matriz {
+    width: 900px;
+}
+
 .fila-acciones {
     display: flex;
     gap: 10px;

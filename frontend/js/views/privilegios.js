@@ -16,7 +16,7 @@ import { obtenerEstado } from '../state.js';
  *               si PostgreSQL lo dejó o no (todo con ROLLBACK).
  */
 const html = `
-<div class="contenedor contenedor-ancho">
+<div class="contenedor contenedor-ancho contenedor-matriz">
     <button class="btn-enlace" id="btnCambiarConexion">← Cambiar conexión</button>
 
     <h1 class="titulo">Privilegios</h1>
