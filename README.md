@@ -95,6 +95,23 @@ procedimientos** (ejecutarlos con datos reales, como cualquier rol).
 > PostgreSQL: atiende las peticiones una por una para que sus transacciones no
 > se mezclen.
 
+## Verificación de la extensión
+
+La pantalla **Extensión** le pregunta todo al servidor (nunca asume que la
+extensión existe porque sus archivos estén en la computadora del cliente) y
+muestra cada revisión como lista de chequeo:
+
+| Estado | Cómo se detecta |
+|---|---|
+| Instalada | Está en `pg_extension` y el usuario tiene `USAGE` en su esquema y `EXECUTE` en sus funciones |
+| No instalada | Está en `pg_available_extensions` (el servidor tiene los archivos) pero no en `pg_extension`. Si el usuario es superusuario se ofrece **Instalar** |
+| No disponible en el servidor | No está ni en `pg_available_extensions` |
+| Instalada pero no disponible para el usuario | Instalada, pero falta `USAGE` en el esquema o `EXECUTE` en alguna función |
+| Error al consultar | La consulta falla o se perdió la conexión |
+
+`pruebas/03_estados_extension.sql` crea las bases `sin_ext` y `restringida` y el
+usuario `invitado` para mostrar estos casos.
+
 ## Privilegios
 
 Pantalla **Generar procedimientos → Asignar privilegios**.

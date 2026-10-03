@@ -507,3 +507,26 @@ body {
 .nota code {
     font-size: 0.8rem;
 }
+
+/* === Lista de chequeo (verificación de la extensión) === */
+.lista-chequeo {
+    list-style: none;
+    margin: 14px 0 6px;
+    font-size: 0.85rem;
+    line-height: 1.7;
+}
+
+.paso-ok {
+    color: #00695c;
+}
+
+.paso-falla {
+    color: #c62828;
+    font-weight: 600;
+}
+
+.boton-ancho {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+}
