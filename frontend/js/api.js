@@ -104,11 +104,96 @@ export async function apiCrearProcedimiento(esquema, tabla, operacion) {
 }
 
 /**
+ * Genera varias tablas x varias operaciones de una vez.
+ */
+export async function apiCrearLote(esquema, tablas, operaciones) {
+    const respuesta = await fetch(`${API_URL}/generador/crear-lote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ esquema, tablas, operaciones })
+    });
+    return await respuesta.json();
+}
+
+/**
  * Lista los procedimientos ya generados para una tabla.
  */
 export async function apiListarProcedimientos(esquema, tabla) {
     const respuesta = await fetch(
         `${API_URL}/generador/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}/procedimientos`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Roles, operaciones y privilegios actuales sobre los procedimientos de una tabla.
+ */
+export async function apiObtenerPrivilegios(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Aplica la matriz { rol: [operaciones] } con GRANT / REVOKE EXECUTE.
+ */
+export async function apiAplicarPrivilegios(esquema, tabla, matriz) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matriz })
+        }
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Ejecuta cada procedimiento como cada rol para comprobar los privilegios.
+ */
+export async function apiProbarPrivilegios(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}/probar`,
+        { method: 'POST' }
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Aplica la misma matriz { rol: [operaciones] } a varias tablas, en una sola transacción.
+ */
+export async function apiAplicarPrivilegiosLote(esquema, tablas, matriz) {
+    const respuesta = await fetch(`${API_URL}/privilegios/${encodeURIComponent(esquema)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tablas, matriz })
+    });
+    return await respuesta.json();
+}
+
+/**
+ * Roles y procedimientos (con sus parámetros) de una tabla, para la pantalla de ejecución.
+ */
+export async function apiDescribirProcedimientos(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/ejecutor/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Ejecuta un procedimiento generado, opcionalmente como otro rol.
+ */
+export async function apiEjecutarProcedimiento(esquema, tabla, operacion, rol, valores) {
+    const respuesta = await fetch(
+        `${API_URL}/ejecutor/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operacion, rol, valores })
+        }
     );
     return await respuesta.json();
 }

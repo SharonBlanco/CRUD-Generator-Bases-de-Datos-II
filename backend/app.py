@@ -10,7 +10,10 @@ from generador import (
     generar_codigo,
     crear_procedimiento,
     listar_procedimientos,
+    crear_lote,
 )
+from ejecutor import describir, ejecutar
+from privilegios import obtener_matriz, aplicar_matriz, probar_matriz
 
 # El backend sirve también el frontend, para levantar todo con un solo
 # comando y desde un solo puerto.
@@ -127,6 +130,18 @@ def ruta_crear_procedimiento():
     return jsonify(resultado), status
 
 
+@app.route('/api/generador/crear-lote', methods=['POST'])
+def ruta_crear_lote():
+    datos = request.get_json() or {}
+    resultado = crear_lote(
+        datos.get('esquema'),
+        datos.get('tablas') or [],
+        datos.get('operaciones') or []
+    )
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
 @app.route('/api/generador/<esquema>/<tabla>/procedimientos', methods=['GET'])
 def ruta_listar_procedimientos(esquema, tabla):
     resultado = listar_procedimientos(esquema, tabla)
@@ -134,5 +149,63 @@ def ruta_listar_procedimientos(esquema, tabla):
     return jsonify(resultado), status
 
 
+@app.route('/api/privilegios/<esquema>/<tabla>', methods=['GET'])
+def ruta_obtener_privilegios(esquema, tabla):
+    resultado = obtener_matriz(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>/<tabla>', methods=['POST'])
+def ruta_aplicar_privilegios(esquema, tabla):
+    datos = request.get_json() or {}
+    resultado = aplicar_matriz(esquema, tabla, datos.get('matriz'))
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>', methods=['POST'])
+def ruta_aplicar_privilegios_lote(esquema):
+    datos = request.get_json() or {}
+    resultado = aplicar_matriz(esquema, datos.get('tablas') or [], datos.get('matriz'))
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>/<tabla>/probar', methods=['POST'])
+def ruta_probar_privilegios(esquema, tabla):
+    resultado = probar_matriz(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/ejecutor/<esquema>/<tabla>', methods=['GET'])
+def ruta_describir_procedimientos(esquema, tabla):
+    resultado = describir(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/ejecutor/<esquema>/<tabla>', methods=['POST'])
+def ruta_ejecutar_procedimiento(esquema, tabla):
+    datos = request.get_json() or {}
+    resultado = ejecutar(
+        esquema,
+        tabla,
+        datos.get('operacion'),
+        datos.get('rol') or None,
+        datos.get('valores')
+    )
+    # Un error de PostgreSQL al ejecutar (permiso denegado, clave que no
+    # existe...) es un resultado esperado de la prueba, no una falla del
+    # servidor: se responde 200 con exito=false.
+    return jsonify(resultado), 200
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # threaded=False: el backend usa UNA sola conexión a PostgreSQL
+    # (db.py). Si Flask atendiera varias peticiones a la vez, sus
+    # transacciones se mezclarían en esa conexión (por ejemplo, la
+    # prueba de privilegios hace SET LOCAL ROLE). Atendiendo una por
+    # una, cada petición termina su transacción antes de la siguiente.
+    app.run(debug=True, port=5000, threaded=False)

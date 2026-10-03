@@ -5,6 +5,8 @@ import vistaEsquemas from './views/esquemas.js';
 import vistaTablas from './views/tablas.js';
 import vistaTabla from './views/tabla.js';
 import vistaGenerador from './views/generador.js';
+import vistaPrivilegios from './views/privilegios.js';
+import vistaEjecutor from './views/ejecutor.js';
 
 registrarRuta('conexion', vistaConexion, { porDefecto: true });
 registrarRuta('extension', vistaExtension);
@@ -12,5 +14,7 @@ registrarRuta('esquemas', vistaEsquemas);
 registrarRuta('tablas', vistaTablas);
 registrarRuta('tabla', vistaTabla);
 registrarRuta('generador', vistaGenerador);
+registrarRuta('privilegios', vistaPrivilegios);
+registrarRuta('ejecutar', vistaEjecutor);
 
 iniciarRouter();
