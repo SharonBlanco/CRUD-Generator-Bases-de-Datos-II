@@ -11,6 +11,7 @@ from generador import (
     crear_procedimiento,
     listar_procedimientos,
 )
+from privilegios import obtener_matriz, aplicar_matriz, probar_matriz
 
 # El backend sirve también el frontend, para levantar todo con un solo
 # comando y desde un solo puerto.
@@ -130,6 +131,28 @@ def ruta_crear_procedimiento():
 @app.route('/api/generador/<esquema>/<tabla>/procedimientos', methods=['GET'])
 def ruta_listar_procedimientos(esquema, tabla):
     resultado = listar_procedimientos(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>/<tabla>', methods=['GET'])
+def ruta_obtener_privilegios(esquema, tabla):
+    resultado = obtener_matriz(esquema, tabla)
+    status = 200 if resultado['exito'] else 500
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>/<tabla>', methods=['POST'])
+def ruta_aplicar_privilegios(esquema, tabla):
+    datos = request.get_json() or {}
+    resultado = aplicar_matriz(esquema, tabla, datos.get('matriz'))
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
+@app.route('/api/privilegios/<esquema>/<tabla>/probar', methods=['POST'])
+def ruta_probar_privilegios(esquema, tabla):
+    resultado = probar_matriz(esquema, tabla)
     status = 200 if resultado['exito'] else 500
     return jsonify(resultado), status
 

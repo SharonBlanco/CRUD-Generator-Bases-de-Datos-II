@@ -36,6 +36,8 @@ const html = `
     </div>
     <div id="listaProcedimientos"></div>
 
+    <button class="btn-conectar" id="btnPrivilegios" style="margin-top: 20px">Asignar privilegios →</button>
+
     <div class="pie-navegacion">
         <button class="btn-enlace" id="btnVolver">← Volver a la estructura</button>
     </div>
@@ -197,6 +199,10 @@ function montar(contenedor) {
 
     contenedor.querySelector('#btnVolver').addEventListener('click', () => {
         navegar('tabla');
+    });
+
+    contenedor.querySelector('#btnPrivilegios').addEventListener('click', () => {
+        navegar('privilegios');
     });
 
     cargarOperaciones();

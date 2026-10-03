@@ -317,3 +317,81 @@ body {
     color: #00695c;
     word-break: break-word;
 }
+
+/* === Pantalla de privilegios === */
+.fila-acciones {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 16px;
+}
+
+.fila-acciones .btn-conectar {
+    flex: 1;
+    margin-top: 0;
+}
+
+.celda-centro {
+    text-align: center !important;
+}
+
+.celda-sub {
+    font-weight: normal;
+    font-size: 0.72rem;
+    color: #80cbc4;
+}
+
+.casilla {
+    width: 18px;
+    height: 18px;
+    accent-color: #00897b;
+    cursor: pointer;
+}
+
+.casilla:disabled {
+    cursor: not-allowed;
+}
+
+.aviso {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #6d5300;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.estado {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.estado-ok {
+    background: #e0f2f1;
+    border: 1px solid #4db6ac;
+    color: #00695c;
+}
+
+.estado-no {
+    background: #fce4ec;
+    border: 1px solid #ef9a9a;
+    color: #c62828;
+}
+
+.estado-medio {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #8d6e00;
+}
+
+.nota {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: #00796b;
+}

@@ -112,3 +112,39 @@ export async function apiListarProcedimientos(esquema, tabla) {
     );
     return await respuesta.json();
 }
+
+/**
+ * Roles, operaciones y privilegios actuales sobre los procedimientos de una tabla.
+ */
+export async function apiObtenerPrivilegios(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Aplica la matriz { rol: [operaciones] } con GRANT / REVOKE EXECUTE.
+ */
+export async function apiAplicarPrivilegios(esquema, tabla, matriz) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matriz })
+        }
+    );
+    return await respuesta.json();
+}
+
+/**
+ * Ejecuta cada procedimiento como cada rol para comprobar los privilegios.
+ */
+export async function apiProbarPrivilegios(esquema, tabla) {
+    const respuesta = await fetch(
+        `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}/probar`,
+        { method: 'POST' }
+    );
+    return await respuesta.json();
+}
