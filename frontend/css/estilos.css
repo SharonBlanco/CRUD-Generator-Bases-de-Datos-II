@@ -399,3 +399,74 @@ body {
     font-size: 0.78rem;
     color: #00796b;
 }
+
+/* === Selección múltiple (tablas, operaciones) === */
+.casilla-etiqueta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #00695c;
+    font-size: 0.9rem;
+}
+
+.lista-item-casilla {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.lista-horizontal {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lista-horizontal .lista-item {
+    flex: 1 1 180px;
+}
+
+.titulo-seccion {
+    margin-top: 22px;
+    font-size: 1rem;
+    color: #00695c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.lista-errores {
+    margin: 10px 0 0 18px;
+    font-size: 0.8rem;
+    color: #c62828;
+    line-height: 1.5;
+}
+
+.codigo-ajustado {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.vista-previa {
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: #00695c;
+}
+
+.vista-previa summary {
+    cursor: pointer;
+}
+
+.selector {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #b2dfdb;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: #00695c;
+    background: #ffffff;
+}

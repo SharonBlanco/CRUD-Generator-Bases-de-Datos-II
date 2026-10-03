@@ -168,16 +168,54 @@ def obtener_matriz(esquema, tabla):
         return {'exito': False, 'mensaje': f'Error al consultar privilegios: {_mensaje_error(e)}'}
 
 
-def aplicar_matriz(esquema, tabla, matriz):
+def _aplicar_en_tabla(cursor, conexion, esquema, tabla, matriz, roles_existentes, operaciones):
     """
-    Aplica la matriz de privilegios.
-
-    matriz = { "vendedor": ["insertar", "consultar"], "supervisor": [...], ... }
+    Ejecuta los GRANT / REVOKE de una tabla SIN hacer commit (lo decide
+    quien llama). Devuelve la lista de sentencias ejecutadas, o None si
+    la tabla no tiene procedimientos generados.
 
     Para cada procedimiento generado de la tabla:
       1. REVOKE EXECUTE ... FROM PUBLIC  (por defecto PostgreSQL deja
          que cualquiera ejecute una función o procedimiento nuevo).
       2. GRANT EXECUTE al rol si la casilla está marcada, REVOKE si no.
+    """
+    procs = _procedimientos(cursor, esquema, tabla, operaciones)
+    if not procs:
+        return None
+
+    sentencias = []
+
+    def ejecutar(consulta):
+        cursor.execute(consulta)
+        sentencias.append(consulta.as_string(conexion) + ';')
+
+    for codigo, proc in procs.items():
+        rutina = sql.SQL(proc['firma'])   # escrito por PostgreSQL (regprocedure)
+
+        ejecutar(sql.SQL('REVOKE EXECUTE ON ROUTINE {} FROM PUBLIC').format(rutina))
+
+        for rol, ops in matriz.items():
+            if roles_existentes[rol]['superusuario']:
+                continue
+            plantilla = (
+                'GRANT EXECUTE ON ROUTINE {} TO {}' if codigo in ops
+                else 'REVOKE EXECUTE ON ROUTINE {} FROM {}'
+            )
+            ejecutar(sql.SQL(plantilla).format(rutina, sql.Identifier(rol)))
+
+    return sentencias
+
+
+def aplicar_matriz(esquema, tablas, matriz):
+    """
+    Aplica la misma matriz de privilegios a una o varias tablas.
+
+    tablas = ["cliente", "producto", ...]   (o un solo nombre como texto)
+    matriz = { "vendedor": ["insertar", "consultar"], "supervisor": [...], ... }
+
+    Todo va en UNA transacción: o se aplica a todas las tablas, o a
+    ninguna. Las tablas que todavía no tienen procedimientos se saltan
+    y se reportan.
 
     Los roles que no vienen en la matriz no se tocan. Los superusuarios
     se ignoran: PostgreSQL nunca les niega nada, así que darles o
@@ -187,6 +225,10 @@ def aplicar_matriz(esquema, tabla, matriz):
     if conexion is None:
         return SIN_CONEXION
 
+    if isinstance(tablas, str):
+        tablas = [tablas]
+    if not tablas:
+        return {'exito': False, 'mensaje': 'No se recibió ninguna tabla.'}
     if not isinstance(matriz, dict) or not matriz:
         return {'exito': False, 'mensaje': 'No se recibió ninguna asignación de privilegios.'}
 
@@ -196,13 +238,6 @@ def aplicar_matriz(esquema, tabla, matriz):
         roles_existentes = {r['nombre']: r for r in _roles(cursor)}
         operaciones = _operaciones(cursor)
         codigos_validos = {op['codigo'] for op in operaciones}
-        procs = _procedimientos(cursor, esquema, tabla, operaciones)
-
-        if not procs:
-            return {
-                'exito': False,
-                'mensaje': f'La tabla {esquema}.{tabla} no tiene procedimientos generados todavía.'
-            }
 
         # Validar todo antes de ejecutar nada.
         for rol, ops in matriz.items():
@@ -212,32 +247,48 @@ def aplicar_matriz(esquema, tabla, matriz):
                 return {'exito': False, 'mensaje': f'Operaciones inválidas para el rol "{rol}".'}
 
         sentencias = []
+        sin_procedimientos = []
 
-        def ejecutar(consulta):
-            cursor.execute(consulta)
-            sentencias.append(consulta.as_string(conexion) + ';')
+        # Para ejecutar una rutina de un esquema, el rol necesita USAGE
+        # sobre ese esquema. USAGE no da acceso a las tablas: solo permite
+        # "ver" los objetos del esquema. Se concede a los roles que reciben
+        # al menos una operación (no se revoca, porque el rol podría
+        # necesitarlo para otras cosas).
+        for rol, ops in matriz.items():
+            if ops and not roles_existentes[rol]['superusuario']:
+                consulta = sql.SQL('GRANT USAGE ON SCHEMA {} TO {}').format(
+                    sql.Identifier(esquema), sql.Identifier(rol))
+                cursor.execute(consulta)
+                sentencias.append(consulta.as_string(conexion) + ';')
+        concedidos_usage = len(sentencias)
 
-        for codigo, proc in procs.items():
-            rutina = sql.SQL(proc['firma'])   # escrito por PostgreSQL (regprocedure)
+        for tabla in tablas:
+            hechas = _aplicar_en_tabla(cursor, conexion, esquema, tabla, matriz,
+                                       roles_existentes, operaciones)
+            if hechas is None:
+                sin_procedimientos.append(tabla)
+            else:
+                sentencias.extend(hechas)
 
-            ejecutar(sql.SQL('REVOKE EXECUTE ON ROUTINE {} FROM PUBLIC').format(rutina))
-
-            for rol, ops in matriz.items():
-                if roles_existentes[rol]['superusuario']:
-                    continue
-                plantilla = (
-                    'GRANT EXECUTE ON ROUTINE {} TO {}' if codigo in ops
-                    else 'REVOKE EXECUTE ON ROUTINE {} FROM {}'
-                )
-                ejecutar(sql.SQL(plantilla).format(rutina, sql.Identifier(rol)))
+        if len(sentencias) == concedidos_usage:
+            conexion.rollback()
+            return {
+                'exito': False,
+                'mensaje': 'Ninguna de las tablas seleccionadas tiene procedimientos generados todavía.'
+            }
 
         conexion.commit()
         cursor.close()
 
+        mensaje = f'Privilegios aplicados ({len(sentencias)} sentencias).'
+        if sin_procedimientos:
+            mensaje += ' Sin procedimientos, se saltaron: ' + ', '.join(sin_procedimientos) + '.'
+
         return {
             'exito': True,
-            'mensaje': f'Privilegios aplicados ({len(sentencias)} sentencias).',
+            'mensaje': mensaje,
             'sentencias': sentencias,
+            'sin_procedimientos': sin_procedimientos,
         }
 
     except Exception as e:
@@ -314,6 +365,17 @@ def _probar_una(conexion, esquema, rol, proc):
             )
             if not cursor.fetchone()[0]:
                 return {'estado': 'denegado', 'detalle': mensaje}
+
+            cursor.execute(
+                'SELECT pg_catalog.has_schema_privilege(%s, %s, %s);',
+                (rol, esquema, 'USAGE')
+            )
+            if not cursor.fetchone()[0]:
+                return {
+                    'estado': 'sin_esquema',
+                    'detalle': f'Tiene EXECUTE, pero no tiene USAGE sobre el esquema {esquema}. '
+                               f'Al aplicar privilegios se concede automáticamente ({mensaje}).'
+                }
             return {
                 'estado': 'sin_tabla',
                 'detalle': f'Tiene EXECUTE, pero el procedimiento es SECURITY INVOKER '

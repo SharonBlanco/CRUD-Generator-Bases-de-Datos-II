@@ -83,6 +83,17 @@ python3 backend/app.py
    El backend copia el archivo dentro del contenedor y aplica
    `ALTER EXTENSION ... UPDATE` automáticamente.
 
+## Flujo de la aplicación
+
+Conexión → Extensión → Esquema → **Tablas** (una, varias o todas) → Estructura
+(análisis hecho por la extensión) → **Generar** (varias operaciones a la vez;
+cada procedimiento en su propia transacción, así un error no frena a los demás)
+→ **Privilegios** (la misma matriz para todas las tablas seleccionadas) → Probar.
+
+> El servidor Flask corre con `threaded=False` porque usa una sola conexión a
+> PostgreSQL: atiende las peticiones una por una para que sus transacciones no
+> se mezclen.
+
 ## Privilegios
 
 Pantalla **Generar procedimientos → Asignar privilegios**.
@@ -94,7 +105,11 @@ Pantalla **Generar procedimientos → Asignar privilegios**.
   sentencias ejecutadas.
 - **Probar con cada rol**: ejecuta de verdad cada procedimiento como cada rol
   (`SET LOCAL ROLE`) con parámetros `NULL` y hace `ROLLBACK`, así que no deja
-  datos. Resultado: permitido / denegado / sin permiso en la tabla.
+  datos. Resultado: permitido / denegado / sin permiso en la tabla / sin acceso
+  al esquema.
+- A los roles que reciben al menos una operación se les concede también
+  `USAGE` sobre el esquema (necesario para llamar rutinas del esquema; no da
+  acceso a las tablas).
 
 > Si se vuelve a generar un procedimiento (DROP + CREATE), PostgreSQL le
 > devuelve el permiso a `PUBLIC`: hay que volver a aplicar los privilegios.

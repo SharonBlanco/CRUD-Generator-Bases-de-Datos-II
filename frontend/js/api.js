@@ -104,6 +104,18 @@ export async function apiCrearProcedimiento(esquema, tabla, operacion) {
 }
 
 /**
+ * Genera varias tablas x varias operaciones de una vez.
+ */
+export async function apiCrearLote(esquema, tablas, operaciones) {
+    const respuesta = await fetch(`${API_URL}/generador/crear-lote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ esquema, tablas, operaciones })
+    });
+    return await respuesta.json();
+}
+
+/**
  * Lista los procedimientos ya generados para una tabla.
  */
 export async function apiListarProcedimientos(esquema, tabla) {
@@ -146,5 +158,17 @@ export async function apiProbarPrivilegios(esquema, tabla) {
         `${API_URL}/privilegios/${encodeURIComponent(esquema)}/${encodeURIComponent(tabla)}/probar`,
         { method: 'POST' }
     );
+    return await respuesta.json();
+}
+
+/**
+ * Aplica la misma matriz { rol: [operaciones] } a varias tablas, en una sola transacción.
+ */
+export async function apiAplicarPrivilegiosLote(esquema, tablas, matriz) {
+    const respuesta = await fetch(`${API_URL}/privilegios/${encodeURIComponent(esquema)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tablas, matriz })
+    });
     return await respuesta.json();
 }

@@ -10,6 +10,7 @@ from generador import (
     generar_codigo,
     crear_procedimiento,
     listar_procedimientos,
+    crear_lote,
 )
 from privilegios import obtener_matriz, aplicar_matriz, probar_matriz
 
@@ -128,6 +129,18 @@ def ruta_crear_procedimiento():
     return jsonify(resultado), status
 
 
+@app.route('/api/generador/crear-lote', methods=['POST'])
+def ruta_crear_lote():
+    datos = request.get_json() or {}
+    resultado = crear_lote(
+        datos.get('esquema'),
+        datos.get('tablas') or [],
+        datos.get('operaciones') or []
+    )
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
 @app.route('/api/generador/<esquema>/<tabla>/procedimientos', methods=['GET'])
 def ruta_listar_procedimientos(esquema, tabla):
     resultado = listar_procedimientos(esquema, tabla)
@@ -150,6 +163,14 @@ def ruta_aplicar_privilegios(esquema, tabla):
     return jsonify(resultado), status
 
 
+@app.route('/api/privilegios/<esquema>', methods=['POST'])
+def ruta_aplicar_privilegios_lote(esquema):
+    datos = request.get_json() or {}
+    resultado = aplicar_matriz(esquema, datos.get('tablas') or [], datos.get('matriz'))
+    status = 200 if resultado['exito'] else 400
+    return jsonify(resultado), status
+
+
 @app.route('/api/privilegios/<esquema>/<tabla>/probar', methods=['POST'])
 def ruta_probar_privilegios(esquema, tabla):
     resultado = probar_matriz(esquema, tabla)
@@ -158,4 +179,9 @@ def ruta_probar_privilegios(esquema, tabla):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # threaded=False: el backend usa UNA sola conexión a PostgreSQL
+    # (db.py). Si Flask atendiera varias peticiones a la vez, sus
+    # transacciones se mezclarían en esa conexión (por ejemplo, la
+    # prueba de privilegios hace SET LOCAL ROLE). Atendiendo una por
+    # una, cada petición termina su transacción antes de la siguiente.
+    app.run(debug=True, port=5000, threaded=False)

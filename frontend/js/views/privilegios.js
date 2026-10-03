@@ -1,6 +1,6 @@
 import {
     apiObtenerPrivilegios,
-    apiAplicarPrivilegios,
+    apiAplicarPrivilegiosLote,
     apiProbarPrivilegios
 } from '../api.js';
 import { crearResultado } from '../components/resultado.js';
@@ -9,9 +9,11 @@ import { obtenerEstado } from '../state.js';
 
 /**
  * Pantalla de privilegios: matriz rol x operación para los
- * procedimientos generados de la tabla seleccionada.
+ * procedimientos generados de las tablas seleccionadas.
  *
- *   Aplicar  -> GRANT / REVOKE EXECUTE (lo hace el backend).
+ *   La misma matriz se aplica a todas las tablas seleccionadas.
+ *   Aplicar  -> GRANT / REVOKE EXECUTE (lo hace el backend, en una sola
+ *               transacción para todas las tablas).
  *   Probar   -> ejecuta cada procedimiento como cada rol y muestra
  *               si PostgreSQL lo dejó o no (todo con ROLLBACK).
  */
@@ -30,6 +32,7 @@ const html = `
         <button class="btn-recargar" id="btnRecargar">⟳ Recargar</button>
     </div>
     <div id="matriz"></div>
+    <p class="nota" id="notaMatriz"></p>
 
     <div class="fila-acciones">
         <button class="btn-conectar" id="btnAplicar">Aplicar privilegios</button>
@@ -40,7 +43,7 @@ const html = `
         <div class="fila-encabezado">
             <label>Sentencias ejecutadas</label>
         </div>
-        <pre class="codigo" id="sentencias"></pre>
+        <pre class="codigo codigo-ajustado" id="sentencias"></pre>
     </div>
 
     <div id="bloquePrueba" hidden>
@@ -58,14 +61,14 @@ const html = `
 
 function escapar(texto) {
     const div = document.createElement('div');
-    div.textContent = String(texto);
+    div.textContent = String(texto ?? '');
     return div.innerHTML;
 }
 
 function montar(contenedor) {
-    const { esquema, tabla } = obtenerEstado();
+    const { esquema, tablas } = obtenerEstado();
 
-    if (!esquema || !tabla) {
+    if (!esquema || tablas.length === 0) {
         navegar(esquema ? 'tablas' : 'esquemas');
         return;
     }
@@ -73,6 +76,7 @@ function montar(contenedor) {
     const resultado = crearResultado(contenedor);
     const avisos = contenedor.querySelector('#avisos');
     const matriz = contenedor.querySelector('#matriz');
+    const notaMatriz = contenedor.querySelector('#notaMatriz');
     const btnAplicar = contenedor.querySelector('#btnAplicar');
     const btnProbar = contenedor.querySelector('#btnProbar');
     const btnRecargar = contenedor.querySelector('#btnRecargar');
@@ -81,9 +85,13 @@ function montar(contenedor) {
     const bloquePrueba = contenedor.querySelector('#bloquePrueba');
     const prueba = contenedor.querySelector('#prueba');
 
-    let datos = null;   // última respuesta de /api/privilegios
+    // porTabla[tabla] = respuesta de GET /api/privilegios/<esquema>/<tabla>
+    let porTabla = {};
+    let roles = [];
+    let operaciones = [];
 
-    contenedor.querySelector('#subtitulo').textContent = `${esquema}.${tabla}`;
+    contenedor.querySelector('#subtitulo').textContent =
+        `${esquema} — ${tablas.join(', ')}`;
 
     function errorDeRed() {
         resultado.mostrar(
@@ -92,36 +100,69 @@ function montar(contenedor) {
         );
     }
 
+    /** Tablas (de las seleccionadas) que tienen generado el procedimiento de esa operación. */
+    function tablasCon(codigo) {
+        return tablas.filter((t) => porTabla[t]?.exito && porTabla[t].procedimientos[codigo]);
+    }
+
+    /** ¿En cuántas de esas tablas el rol puede ejecutar la operación? */
+    function conPermiso(rolNombre, codigo) {
+        return tablasCon(codigo).filter((t) => {
+            const rol = porTabla[t].roles.find((r) => r.nombre === rolNombre);
+            return rol && rol.permisos[codigo];
+        }).length;
+    }
+
     function dibujarAvisos() {
         const lista = [];
-        const procs = Object.values(datos.procedimientos);
 
-        if (procs.some((p) => p.security === 'INVOKER')) {
+        const conInvoker = tablas.filter((t) => porTabla[t]?.exito &&
+            Object.values(porTabla[t].procedimientos).some((p) => p.security === 'INVOKER'));
+        if (conInvoker.length > 0) {
             lista.push(
-                'Los procedimientos de esta tabla son <b>SECURITY INVOKER</b>: corren con los ' +
-                'permisos de quien los llama. Un rol con EXECUTE igual va a fallar si no tiene ' +
-                'permiso directo sobre la tabla. Con <b>SECURITY DEFINER</b>, el EXECUTE basta.'
+                `Hay procedimientos <b>SECURITY INVOKER</b> (en: ${escapar(conInvoker.join(', '))}). ` +
+                'Corren con los permisos de quien los llama, así que un rol con EXECUTE igual va a ' +
+                'fallar si no tiene permiso directo sobre la tabla. Regeneralos con la extensión 1.2 ' +
+                'para que sean <b>SECURITY DEFINER</b>.'
             );
         }
-        if (datos.ejecutables_por_public.length > 0) {
-            const nombres = datos.ejecutables_por_public
-                .map((c) => escapar(datos.procedimientos[c].nombre)).join(', ');
+
+        const publicos = [];
+        tablas.forEach((t) => {
+            if (!porTabla[t]?.exito) return;
+            porTabla[t].ejecutables_por_public.forEach((c) => publicos.push(porTabla[t].procedimientos[c].nombre));
+        });
+        if (publicos.length > 0) {
             lista.push(
-                `Hoy <b>cualquier usuario</b> (PUBLIC) puede ejecutar: ${nombres}. ` +
-                'Es el comportamiento por defecto de PostgreSQL; al aplicar se revoca.'
+                `Hoy <b>cualquier usuario</b> (PUBLIC) puede ejecutar: ${escapar(publicos.join(', '))}. ` +
+                'Al aplicar se revoca.'
             );
         }
+
+        const sinProcs = tablas.filter((t) => porTabla[t]?.exito &&
+            Object.keys(porTabla[t].procedimientos).length === 0);
+        if (sinProcs.length > 0) {
+            lista.push(
+                `Sin procedimientos generados (se van a saltar): ${escapar(sinProcs.join(', '))}.`
+            );
+        }
+
+        const conError = tablas.filter((t) => !porTabla[t]?.exito);
+        conError.forEach((t) => {
+            lista.push(`✗ ${escapar(t)}: ${escapar(porTabla[t]?.mensaje || 'error al consultar')}`);
+        });
 
         avisos.innerHTML = lista.map((t) => `<div class="aviso">${t}</div>`).join('');
     }
 
     function dibujarMatriz() {
-        const { roles, operaciones, procedimientos } = datos;
+        const hayAlguno = operaciones.some((op) => tablasCon(op.codigo).length > 0);
 
-        if (Object.keys(procedimientos).length === 0) {
+        if (!hayAlguno) {
             matriz.innerHTML =
-                '<p class="vacio">Esta tabla todavía no tiene procedimientos generados. ' +
+                '<p class="vacio">Ninguna de las tablas seleccionadas tiene procedimientos generados. ' +
                 'Generalos primero en la pantalla anterior.</p>';
+            notaMatriz.textContent = '';
             btnAplicar.disabled = true;
             btnProbar.disabled = true;
             return;
@@ -130,11 +171,9 @@ function montar(contenedor) {
         btnProbar.disabled = false;
 
         const encabezados = operaciones.map((op) => {
-            const proc = procedimientos[op.codigo];
-            const sub = proc
-                ? `<div class="celda-sub">${escapar(proc.nombre)}</div>`
-                : '<div class="celda-sub">no generado</div>';
-            return `<th class="celda-centro">${escapar(op.etiqueta)}${sub}</th>`;
+            const n = tablasCon(op.codigo).length;
+            const sub = n === 0 ? 'no generado' : `en ${n} de ${tablas.length} ${tablas.length === 1 ? 'tabla' : 'tablas'}`;
+            return `<th class="celda-centro">${escapar(op.etiqueta)}<div class="celda-sub">${sub}</div></th>`;
         }).join('');
 
         const filas = roles.map((rol) => {
@@ -144,10 +183,13 @@ function montar(contenedor) {
             ].join('');
 
             const celdas = operaciones.map((op) => {
-                if (!procedimientos[op.codigo]) {
+                const total = tablasCon(op.codigo).length;
+                if (total === 0) {
                     return '<td class="celda-centro celda-sub">—</td>';
                 }
-                const marcado = rol.permisos[op.codigo] ? 'checked' : '';
+                const cuantas = conPermiso(rol.nombre, op.codigo);
+                const marcado = cuantas === total ? 'checked' : '';
+                const mixto = cuantas > 0 && cuantas < total ? 'data-mixto="1"' : '';
                 const bloqueado = rol.superusuario
                     ? 'disabled title="Un superusuario siempre puede ejecutar todo"'
                     : '';
@@ -155,7 +197,7 @@ function montar(contenedor) {
                     <td class="celda-centro">
                         <input type="checkbox" class="casilla"
                                data-rol="${escapar(rol.nombre)}"
-                               data-op="${escapar(op.codigo)}" ${marcado} ${bloqueado}>
+                               data-op="${escapar(op.codigo)}" ${marcado} ${mixto} ${bloqueado}>
                     </td>`;
             }).join('');
 
@@ -173,18 +215,39 @@ function montar(contenedor) {
                     <tbody>${filas}</tbody>
                 </table>
             </div>`;
+
+        // Casillas "mixtas": el rol tiene el permiso solo en algunas tablas.
+        const mixtas = matriz.querySelectorAll('input[data-mixto]');
+        mixtas.forEach((c) => {
+            c.indeterminate = true;
+            c.addEventListener('change', () => { c.indeterminate = false; }, { once: true });
+        });
+
+        notaMatriz.textContent = tablas.length > 1
+            ? 'La matriz se aplica igual a todas las tablas seleccionadas.' +
+              (mixtas.length > 0
+                  ? ' Las casillas con guion tienen el permiso solo en algunas tablas; ' +
+                    'si no las tocás, al aplicar quedan desmarcadas en todas.'
+                  : '')
+            : '';
     }
 
     async function cargar() {
         resultado.mostrar('Cargando roles y privilegios...', true);
         try {
-            const json = await apiObtenerPrivilegios(esquema, tabla);
-            if (!json.exito) {
-                resultado.mostrar(`✗ ${json.mensaje}`, false);
+            const respuestas = await Promise.all(tablas.map((t) => apiObtenerPrivilegios(esquema, t)));
+            porTabla = {};
+            tablas.forEach((t, i) => { porTabla[t] = respuestas[i]; });
+
+            const primera = respuestas.find((r) => r.exito);
+            if (!primera) {
+                resultado.mostrar(`✗ ${respuestas[0].mensaje}`, false);
                 return;
             }
+            roles = primera.roles;
+            operaciones = primera.operaciones;
+
             resultado.ocultar();
-            datos = json;
             dibujarAvisos();
             dibujarMatriz();
         } catch {
@@ -195,12 +258,10 @@ function montar(contenedor) {
     function leerMatriz() {
         // { rol: [operaciones marcadas] } solo para roles que no son superusuario.
         const resultadoMatriz = {};
-        datos.roles
-            .filter((r) => !r.superusuario)
-            .forEach((r) => { resultadoMatriz[r.nombre] = []; });
+        roles.filter((r) => !r.superusuario).forEach((r) => { resultadoMatriz[r.nombre] = []; });
 
         matriz.querySelectorAll('.casilla:not(:disabled)').forEach((casilla) => {
-            if (casilla.checked) {
+            if (casilla.checked && !casilla.indeterminate) {
                 resultadoMatriz[casilla.dataset.rol].push(casilla.dataset.op);
             }
         });
@@ -212,22 +273,17 @@ function montar(contenedor) {
         btnAplicar.textContent = 'Aplicando...';
         bloquePrueba.hidden = true;
         try {
-            const json = await apiAplicarPrivilegios(esquema, tabla, leerMatriz());
+            const json = await apiAplicarPrivilegiosLote(esquema, tablas, leerMatriz());
             if (!json.exito) {
                 resultado.mostrar(`✗ ${json.mensaje}`, false);
                 return;
             }
-            resultado.mostrar(`✓ ${json.mensaje}`, true);
             sentencias.textContent = json.sentencias.join('\n');
             bloqueSentencias.hidden = false;
 
             // Volver a leer del catálogo para mostrar el estado REAL.
-            const recargado = await apiObtenerPrivilegios(esquema, tabla);
-            if (recargado.exito) {
-                datos = recargado;
-                dibujarAvisos();
-                dibujarMatriz();
-            }
+            await cargar();
+            resultado.mostrar(`✓ ${json.mensaje}`, true);
         } catch {
             errorDeRed();
         } finally {
@@ -240,12 +296,14 @@ function montar(contenedor) {
         btnProbar.disabled = true;
         btnProbar.textContent = 'Probando...';
         try {
-            const json = await apiProbarPrivilegios(esquema, tabla);
-            if (!json.exito) {
-                resultado.mostrar(`✗ ${json.mensaje}`, false);
+            const conProcs = tablas.filter((t) => operaciones.some((op) => porTabla[t]?.procedimientos?.[op.codigo]));
+            const respuestas = await Promise.all(conProcs.map((t) => apiProbarPrivilegios(esquema, t)));
+            const fallida = respuestas.find((r) => !r.exito);
+            if (fallida) {
+                resultado.mostrar(`✗ ${fallida.mensaje}`, false);
                 return;
             }
-            dibujarPrueba(json.resultados);
+            dibujarPrueba(conProcs, respuestas);
         } catch {
             errorDeRed();
         } finally {
@@ -254,29 +312,36 @@ function montar(contenedor) {
         }
     });
 
-    function dibujarPrueba(resultados) {
-        const ops = datos.operaciones.filter((op) => datos.procedimientos[op.codigo]);
+    function dibujarPrueba(tablasProbadas, respuestas) {
         const simbolos = {
             permitido: '<span class="estado estado-ok">✓ permitido</span>',
             denegado: '<span class="estado estado-no">✗ denegado</span>',
-            sin_tabla: '<span class="estado estado-medio">⚠ sin permiso en la tabla</span>'
+            sin_tabla: '<span class="estado estado-medio">⚠ sin permiso en la tabla</span>',
+            sin_esquema: '<span class="estado estado-medio">⚠ sin acceso al esquema</span>'
         };
 
-        const filas = Object.entries(resultados).map(([rol, porOp]) => {
-            const celdas = ops.map((op) => {
-                const r = porOp[op.codigo];
-                return `<td class="celda-centro" title="${escapar(r.detalle)}">${simbolos[r.estado]}</td>`;
+        const secciones = tablasProbadas.map((tabla, i) => {
+            const ops = operaciones.filter((op) => porTabla[tabla].procedimientos[op.codigo]);
+            const filas = Object.entries(respuestas[i].resultados).map(([rol, porOp]) => {
+                const celdas = ops.map((op) => {
+                    const r = porOp[op.codigo];
+                    return `<td class="celda-centro" title="${escapar(r.detalle)}">${simbolos[r.estado]}</td>`;
+                }).join('');
+                return `<tr><td class="celda-nombre">${escapar(rol)}</td>${celdas}</tr>`;
             }).join('');
-            return `<tr><td class="celda-nombre">${escapar(rol)}</td>${celdas}</tr>`;
+
+            return `
+                ${tablasProbadas.length > 1 ? `<h2 class="titulo-seccion">${escapar(tabla)}</h2>` : ''}
+                <div class="scroll-horizontal">
+                    <table class="tabla-columnas">
+                        <thead><tr><th>Rol</th>${ops.map((o) => `<th class="celda-centro">${escapar(o.etiqueta)}</th>`).join('')}</tr></thead>
+                        <tbody>${filas}</tbody>
+                    </table>
+                </div>`;
         }).join('');
 
         prueba.innerHTML = `
-            <div class="scroll-horizontal">
-                <table class="tabla-columnas">
-                    <thead><tr><th>Rol</th>${ops.map((o) => `<th class="celda-centro">${escapar(o.etiqueta)}</th>`).join('')}</tr></thead>
-                    <tbody>${filas}</tbody>
-                </table>
-            </div>
+            ${secciones}
             <p class="nota">Pasá el mouse sobre cada resultado para ver el mensaje de PostgreSQL.
             Los superusuarios no se prueban porque PostgreSQL nunca les niega nada.</p>`;
         bloquePrueba.hidden = false;

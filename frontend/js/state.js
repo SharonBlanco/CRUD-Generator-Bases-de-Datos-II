@@ -6,7 +6,7 @@ const estado = {
     conectado: false,
     datosConexion: null,
     esquema: null,
-    tabla: null
+    tablas: []      // tablas seleccionadas del esquema (una, varias o todas)
 };
 
 export function setConexion(datos) {
@@ -18,16 +18,18 @@ export function limpiarConexion() {
     estado.conectado = false;
     estado.datosConexion = null;
     estado.esquema = null;
-    estado.tabla = null;
+    estado.tablas = [];
 }
 
 export function setEsquema(esquema) {
+    if (estado.esquema !== esquema) {
+        estado.tablas = [];
+    }
     estado.esquema = esquema;
-    estado.tabla = null;
 }
 
-export function setTabla(tabla) {
-    estado.tabla = tabla;
+export function setTablas(tablas) {
+    estado.tablas = [...tablas];
 }
 
 export function obtenerEstado() {

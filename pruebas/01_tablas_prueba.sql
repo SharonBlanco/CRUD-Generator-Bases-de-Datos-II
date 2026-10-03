@@ -5,6 +5,10 @@
 -- selección de esquema. Se puede ejecutar varias veces: borra y vuelve
 -- a crear el esquema.
 --
+-- OJO: como borra y recrea el esquema, los roles pierden su USAGE
+-- sobre "tienda". La app lo vuelve a conceder al aplicar privilegios,
+-- pero si usás psql directo, corré también 02_roles_prueba.sql.
+--
 -- Uso (desde la carpeta del proyecto):
 --   PowerShell:
 --     Get-Content pruebas\01_tablas_prueba.sql | docker exec -i crud_generator_db psql -U postgres -d crud_test
