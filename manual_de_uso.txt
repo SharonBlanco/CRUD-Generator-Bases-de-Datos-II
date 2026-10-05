@@ -1,0 +1,122 @@
+MANUAL DE USO - CRUD GENERATOR
+Generador automático de procedimientos CRUD para PostgreSQL
+Bases de Datos II - TEC San Carlos - II Semestre 2026
+==========================================================
+
+
+1. QUÉ SE NECESITA INSTALADO
+----------------------------
+- Python 3.12 o superior (al instalar, marcar "Add python.exe to PATH")
+- Docker Desktop (abierto y corriendo)
+- Git
+
+
+2. DESCARGAR EL PROYECTO
+------------------------
+Abrir PowerShell y escribir:
+
+    git clone https://github.com/SharonBlanco/CRUD-Generator-Bases-de-Datos-II.git
+    cd CRUD-Generator-Bases-de-Datos-II
+
+
+3. INSTALAR (solo la primera vez)
+---------------------------------
+    python -m venv venv
+    venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
+
+Si sale un error de "execution policy", escribir una vez:
+    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+y volver a escribir: venv\Scripts\Activate.ps1
+
+
+4. LEVANTAR LA BASE DE DATOS
+----------------------------
+Con Docker Desktop abierto:
+
+    docker compose up -d --build
+
+Esto crea PostgreSQL 16 con la extensión crud_generator ya instalada.
+
+
+5. CARGAR LOS DATOS DE PRUEBA
+-----------------------------
+
+    Get-Content pruebas\01_tablas_prueba.sql | docker exec -i crud_generator_db psql -U postgres -d crud_test
+    Get-Content pruebas\02_roles_prueba.sql | docker exec -i crud_generator_db psql -U postgres -d crud_test
+    Get-Content pruebas\03_estados_extension.sql | docker exec -i crud_generator_db psql -U postgres -d postgres
+    Get-Content pruebas\04_tablas_nuevas_demo.sql | docker exec -i crud_generator_db psql -U postgres -d postgres
+
+
+
+6. CORRER LA APLICACIÓN
+-----------------------
+    python backend\app.py
+
+Abrir en el navegador:  http://localhost:5000
+
+
+
+7. CONECTARSE
+-------------
+    Servidor:       localhost
+    Puerto:         5434
+    Base de datos:  crud_test
+    Usuario:        postgres
+    Contraseña:     postgres
+
+
+
+8. CÓMO PROBARLO
+----------------
+1) Extensión: debe decir "Extensión instalada y disponible". Presionar "Continuar".
+2) Esquemas: elegir "tienda".
+3) Tablas: marcar "Seleccionar todas" y presionar "Analizar estructura".
+4) Estructura: se ven las columnas, la clave primaria y las columnas
+   autogeneradas de cada tabla. Presionar "Generar procedimientos CRUD".
+5) Generar: dejar marcadas las 4 operaciones y presionar "Generar procedimientos".
+   (bitacora no tiene clave primaria, por eso actualizar y eliminar dan error:
+   eso es lo correcto.)
+6) Presionar "Asignar privilegios" y marcar:
+
+       Rol            Insertar  Consultar  Actualizar  Eliminar
+       vendedor          X         X
+       supervisor        X         X          X
+       administrador     X         X          X           X
+
+   Presionar "Aplicar privilegios" y luego "Probar con cada rol".
+7) Presionar "Probar procedimientos con datos reales". Elegir tabla, operación
+   y en "Ejecutar como" un rol. Llenar los datos y presionar "Ejecutar".
+   Ejemplo: tabla cliente, Eliminar, como vendedor -> "Permiso denegado".
+
+
+9. OTROS USUARIOS Y BASES DE PRUEBA
+-----------------------------------
+    Roles:  vendedor / vendedor
+            supervisor / supervisor
+            administrador / administrador
+
+    Para ver los estados de la extensión, conectarse a:
+      Base sin_ext,      usuario postgres / postgres  -> "no instalada" (botón Instalar)
+      Base restringida,  usuario invitado / invitado  -> "instalada pero sin acceso"
+
+
+10. APAGAR
+----------
+    Ctrl + C            (en la terminal de la aplicación)
+    docker compose stop (para apagar la base de datos)
+
+
+11. SI ALGO FALLA
+-----------------
+- "No se pudo conectar con el backend": la aplicación no está corriendo
+  (paso 6).
+- Error al conectar: Docker Desktop está cerrado o el puerto no es 5434.
+- La prueba de privilegios dice "sin acceso al esquema": presionar otra vez
+  "Aplicar privilegios".
+- Después de volver a generar un procedimiento hay que volver a aplicar los
+  privilegios.
+- Para empezar de cero (BORRA TODOS LOS DATOS):
+    docker compose down -v
+    docker compose up -d --build
+  y repetir el paso 5.
