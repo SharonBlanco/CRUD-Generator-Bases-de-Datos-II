@@ -23,30 +23,43 @@ def listar_esquemas():
 
 
 def listar_tablas(esquema):
-    "Lista las tablas de un esquema"
+    """
+    Lista las tablas base de un esquema (sin vistas), leyendo pg_class.
+    information_schema.tables también devuelve vistas, y a una vista no
+    se le pueden generar procedimientos CRUD.
+    """
     conexion = obtener_conexion()
     if conexion is None:
         return {'exito': False, 'mensaje': 'No hay una conexión activa a la base de datos.'}
 
     try:
         cursor = conexion.cursor()
-        cursor.execute(
-            'SELECT table_name FROM information_schema.tables WHERE table_schema = %s;',
-            (esquema,)
-        )
+        cursor.execute("""
+            SELECT c.relname
+            FROM pg_catalog.pg_class c
+            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = %s
+              AND c.relkind IN ('r', 'p')      -- tabla normal o particionada
+              AND NOT c.relispartition         -- no listar cada partición suelta
+            ORDER BY c.relname;
+        """, (esquema,))
         tablas = [fila[0] for fila in cursor.fetchall()]
         cursor.close()
+        conexion.rollback()
 
         return {'exito': True, 'tablas': tablas}
 
     except Exception as e:
+        conexion.rollback()
         return {'exito': False, 'mensaje': f'Error al listar tablas: {str(e)}'}
 
 
 def analizar_tabla(esquema, tabla):
     """
-    Analiza la estructura de una tabla: columnas, tipos, si aceptan nulos,
-    cuáles son autogeneradas, y cuál es la llave primaria.
+    Estructura de una tabla, obtenida de la EXTENSIÓN (crud_analizar_tabla),
+    que es la misma función que usan los generadores. Así la pantalla
+    muestra exactamente lo que la extensión va a usar para generar, y la
+    lógica estructural no se duplica en Python.
     """
     conexion = obtener_conexion()
     if conexion is None:
@@ -54,40 +67,34 @@ def analizar_tabla(esquema, tabla):
 
     try:
         cursor = conexion.cursor()
-
         cursor.execute("""
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns
-            WHERE table_schema = %s AND table_name = %s
-            ORDER BY ordinal_position;
+            SELECT columna, tipo, acepta_nulos, autogenerada, es_pk, valor_defecto
+            FROM crud_analizar_tabla(%s, %s)
+            ORDER BY posicion;
         """, (esquema, tabla))
-        filas_columnas = cursor.fetchall()
-
-        cursor.execute("""
-            SELECT kcu.column_name
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu
-                ON tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'PRIMARY KEY'
-                AND tc.table_schema = %s
-                AND tc.table_name = %s;
-        """, (esquema, tabla))
-        llaves_primarias = {fila[0] for fila in cursor.fetchall()}
+        filas = cursor.fetchall()
         cursor.close()
+        conexion.rollback()
 
         columnas = [
             {
                 'nombre': nombre,
                 'tipo': tipo,
-                'permite_nulos': permite_nulos == 'YES',
-                'autogenerada': valor_default is not None and 'nextval' in valor_default,
-                'es_llave_primaria': nombre in llaves_primarias
+                'permite_nulos': nulos,
+                'autogenerada': auto,
+                'es_llave_primaria': pk,
+                'valor_defecto': defecto,
             }
-            for nombre, tipo, permite_nulos, valor_default in filas_columnas
+            for nombre, tipo, nulos, auto, pk, defecto in filas
         ]
 
-        return {'exito': True, 'columnas': columnas}
+        return {
+            'exito': True,
+            'columnas': columnas,
+            'tiene_pk': any(c['es_llave_primaria'] for c in columnas),
+        }
 
     except Exception as e:
-        return {'exito': False, 'mensaje': f'Error al analizar tabla: {str(e)}'}
+        conexion.rollback()
+        mensaje = e.diag.message_primary if getattr(e, 'diag', None) and e.diag.message_primary else str(e)
+        return {'exito': False, 'mensaje': f'Error al analizar tabla: {mensaje}'}

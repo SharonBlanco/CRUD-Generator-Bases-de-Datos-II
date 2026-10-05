@@ -88,6 +88,9 @@ def listar_procedimientos(esquema, tabla):
 
     try:
         cursor = conexion.cursor()
+        # Nombres exactos <tabla>_<operacion>, con las operaciones que
+        # conoce la extensión. (Con LIKE 'tabla_%' una tabla "cliente"
+        # también agarraría los de otra tabla llamada "cliente_vip".)
         cursor.execute("""
             SELECT p.proname,
                    pg_catalog.pg_get_function_identity_arguments(p.oid),
@@ -95,9 +98,9 @@ def listar_procedimientos(esquema, tabla):
             FROM pg_catalog.pg_proc p
             JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = %s
-              AND p.proname LIKE %s
+              AND p.proname IN (SELECT %s || '_' || codigo FROM crud_operaciones())
             ORDER BY p.proname;
-        """, (esquema, f'{tabla}\\_%'))
+        """, (esquema, tabla))
 
         procedimientos = [
             {'nombre': fila[0], 'argumentos': fila[1], 'clase': fila[2]}
@@ -110,3 +113,44 @@ def listar_procedimientos(esquema, tabla):
     except Exception as e:
         conexion.rollback()
         return {'exito': False, 'mensaje': f'Error al listar procedimientos: {_mensaje_error(e)}'}
+
+
+def crear_lote(esquema, tablas, operaciones):
+    """
+    Genera varias tablas x varias operaciones de una vez.
+
+    Cada procedimiento va en su propia transacción: si uno falla (por
+    ejemplo "eliminar" en una tabla sin clave primaria), los demás se
+    crean igual, y se reporta el error de ese solo.
+    """
+    conexion = obtener_conexion()
+    if conexion is None:
+        return {'exito': False, 'mensaje': 'No hay una conexión activa a la base de datos.'}
+
+    if not tablas or not operaciones:
+        return {'exito': False, 'mensaje': 'Seleccioná al menos una tabla y una operación.'}
+
+    resultados = []
+    for tabla in tablas:
+        for operacion in operaciones:
+            try:
+                cursor = conexion.cursor()
+                cursor.execute(
+                    'CALL crud_generar_procedimiento(%s, %s, %s);',
+                    (esquema, tabla, operacion)
+                )
+                conexion.commit()
+                cursor.close()
+                resultados.append({'tabla': tabla, 'operacion': operacion, 'exito': True,
+                                   'mensaje': 'Creado.'})
+            except Exception as e:
+                conexion.rollback()
+                resultados.append({'tabla': tabla, 'operacion': operacion, 'exito': False,
+                                   'mensaje': _mensaje_error(e)})
+
+    creados = sum(1 for r in resultados if r['exito'])
+    return {
+        'exito': True,
+        'mensaje': f'{creados} de {len(resultados)} procedimientos creados.',
+        'resultados': resultados,
+    }
